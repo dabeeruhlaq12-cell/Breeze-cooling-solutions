@@ -154,12 +154,12 @@ function hangarScene() {
   const stage = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 1.8), new THREE.MeshStandardMaterial({ color: 0x163a5c, roughness: 0.7 }));
   stage.position.set(0, 0.25, -D / 2 + 1.2);
   scene.add(stage);
-  const cloth = new THREE.MeshStandardMaterial({ color: 0xf2e6d6, roughness: 0.9 });
-  const tables = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.5, 0.56, 0.75, 20), cloth, 12);
+  const cloth = new THREE.MeshStandardMaterial({ color: 0x8c7f70, roughness: 0.95 });
+  const tables = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.38, 0.44, 0.7, 20), cloth, 9);
   let k = 0;
   const m = new THREE.Matrix4();
-  for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) {
-    m.makeTranslation((c - 1) * 2.3, 0.375, -2.6 + r * 2.2);
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+    m.makeTranslation((c - 1) * 2.2, 0.35, -2.4 + r * 2.6);
     tables.setMatrixAt(k++, m);
   }
   scene.add(tables);
@@ -187,7 +187,7 @@ function hangarScene() {
     scene.add(pts);
     return { geo, n, p: geo.attributes.position.array, c: geo.attributes.color.array, v: new Float32Array(n * 3), age: new Float32Array(n), life: new Float32Array(n) };
   }
-  const cold = makeCloud(small ? 520 : 1100, 0.16);
+  const cold = makeCloud(small ? 600 : 1300, 0.24);
   const hot = makeCloud(small ? 220 : 480, 0.55);
 
   function spawnCold(i) {
@@ -221,7 +221,7 @@ function hangarScene() {
       cold.p[j] += cold.v[j] * dt; cold.p[j + 1] += cold.v[j + 1] * dt; cold.p[j + 2] += cold.v[j + 2] * dt;
       if (cold.p[j + 1] < 0.15) { cold.p[j + 1] = 0.15; cold.v[j + 1] = 0; }
       const a = cold.age[i] / cold.life[i];
-      const f = Math.min(1, a * 6) * (1 - a) * 0.95;
+      const f = Math.min(1, a * 6) * (1 - a) * 1.25;
       cold.c[j] = cyan.r * f; cold.c[j + 1] = cyan.g * f; cold.c[j + 2] = cyan.b * f;
     }
     for (let i = 0; i < hot.n; i++) {
@@ -248,7 +248,10 @@ function hangarScene() {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     wide = w / h > 1.15;
-    camera.fov = wide ? 36 : 52;
+    camera.fov = wide ? 34 : 46;
+    // Frame the hangar to the right of the copy on wide screens, above it on narrow ones
+    if (wide) camera.setViewOffset(w * 1.5, h, 0, 0, w, h);
+    else camera.setViewOffset(w, h * 1.6, 0, h * 0.52, w, h);
     camera.updateProjectionMatrix();
   }
   new ResizeObserver(resize).observe(canvas);
@@ -258,9 +261,9 @@ function hangarScene() {
     pointer.x += (pointer.tx - pointer.x) * 0.04;
     pointer.y += (pointer.ty - pointer.y) * 0.04;
     const theta = 0.68 + Math.sin(time * 0.07) * 0.22 + pointer.x * 0.25;
-    const radius = wide ? 19 : 21;
+    const radius = wide ? 20 : 23;
     camera.position.set(Math.sin(theta) * radius, 7.2 + pointer.y * 1.4, Math.cos(theta) * radius);
-    if (wide) target.set(-4.2, 1.2, 0); else target.set(0, -1.6, 0);
+    target.set(0, 1.4, 0);
     camera.lookAt(target);
   }
 
