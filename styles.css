@@ -75,7 +75,7 @@ p{margin:0 0 1em;max-width:62ch}
 .plan{background:#E9F0F5;padding:clamp(72px,10vw,120px) 0}
 .plan-head{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,72px);align-items:end;margin-bottom:40px}
 .plan-head p{color:var(--steel);margin:0}
-.plan-stage{margin:0;position:relative;border-radius:var(--r-lg);overflow:hidden;background:linear-gradient(180deg,#CFDDE8 0%,#E8EEF2 55%,#D9D5CC 100%);aspect-ratio:16/8.2;box-shadow:0 30px 60px -30px rgba(11,34,56,.35)}
+.plan-stage{margin:0;position:relative;border-radius:var(--r-lg);overflow:hidden;background:linear-gradient(180deg,#9DB8CE 0%,#C9D8E3 48%,#D6CFC2 100%);aspect-ratio:16/8.2;box-shadow:0 30px 60px -30px rgba(11,34,56,.35)}
 #hangar{width:100%;height:100%;display:block;cursor:grab;touch-action:pan-y}
 #hangar:active{cursor:grabbing}
 .plan-stage figcaption{position:absolute;left:16px;bottom:16px;right:16px;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font-size:13px;font-weight:600;pointer-events:none}

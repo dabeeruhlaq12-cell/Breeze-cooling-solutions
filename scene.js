@@ -104,7 +104,7 @@ function hangarScene() {
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.fog = new THREE.Fog(0xdcd8cf, 34, 80);
+  scene.fog = new THREE.Fog(0xd3cbbd, 30, 70);
 
   const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 200);
   const target = new THREE.Vector3(0, 1.3, 0);
@@ -120,8 +120,9 @@ function hangarScene() {
   scene.add(sun);
 
   const W = 10, E = 3.4, R = 4.6, D = 14;
-  const alu = new THREE.MeshStandardMaterial({ color: 0xd6dce1, metalness: 0.9, roughness: 0.28 });
-  const pvc = new THREE.MeshStandardMaterial({ color: 0xf6f5f1, roughness: 0.8, side: THREE.DoubleSide });
+  const alu = new THREE.MeshStandardMaterial({ color: 0xe4e8eb, metalness: 0.55, roughness: 0.32 });
+  const pvc = new THREE.MeshStandardMaterial({ color: 0xfbfaf6, roughness: 0.75, side: THREE.DoubleSide });
+  const valance = new THREE.MeshStandardMaterial({ color: 0x0b5cc4, roughness: 0.7, side: THREE.DoubleSide });
 
   const ground = new THREE.Mesh(new THREE.CircleGeometry(60, 64), new THREE.MeshStandardMaterial({ color: 0xbdb3a1, roughness: 1 }));
   ground.rotation.x = -Math.PI / 2;
@@ -163,6 +164,12 @@ function hangarScene() {
   farWall.rotation.y = Math.PI / 2;
   const gable = new THREE.Shape([new THREE.Vector2(-W / 2, 0), new THREE.Vector2(W / 2, 0), new THREE.Vector2(W / 2, E), new THREE.Vector2(0, R), new THREE.Vector2(-W / 2, E)]);
   add(new THREE.Mesh(new THREE.ShapeGeometry(gable), pvc)).position.z = -D / 2 - 0.1;
+
+  for (const sx of [-1, 1]) {
+    const band = add(new THREE.Mesh(new THREE.PlaneGeometry(D + 0.3, 0.45), valance), false);
+    band.position.set(sx * (W / 2 + 0.12), E - 0.12, 0);
+    band.rotation.y = Math.PI / 2;
+  }
 
   // Stage with backdrop
   add(new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.6, 1.8), new THREE.MeshStandardMaterial({ color: 0x3b2a22, roughness: 0.6 }))).position.set(0, 0.3, -D / 2 + 1.1);
@@ -267,7 +274,7 @@ function hangarScene() {
   resize();
 
   // Gentle auto orbit; drag to look around
-  let theta = 0.62, pitch = 0.32, vel = 0, dragging = false, lx = 0, ly = 0, idle = 0;
+  let theta = 0.7, pitch = 0.26, vel = 0, dragging = false, lx = 0, ly = 0, idle = 0;
   canvas.addEventListener('pointerdown', (e) => { dragging = true; lx = e.clientX; ly = e.clientY; canvas.setPointerCapture(e.pointerId); });
   canvas.addEventListener('pointermove', (e) => {
     if (!dragging) return;
@@ -280,7 +287,7 @@ function hangarScene() {
 
   function place() {
     theta = Math.min(1.35, Math.max(0.05, theta));
-    const radius = 18 + 14 / Math.max(camera.aspect, 0.5);
+    const radius = 12.5 + 11 / Math.max(camera.aspect, 0.5);
     camera.position.set(Math.sin(theta) * Math.cos(pitch) * radius, Math.sin(pitch) * radius + 1.3, Math.cos(theta) * Math.cos(pitch) * radius);
     camera.lookAt(target);
   }
