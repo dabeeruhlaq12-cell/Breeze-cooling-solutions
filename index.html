@@ -34,9 +34,6 @@
   "parentOrganization": {"@type": "Organization", "name": "Grand Sameer Events", "url": "https://grandsameerevents.com"}
 }
 </script>
-<script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
-</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -89,9 +86,12 @@
         <p class="head-note">4 TR towers for hangars and halls.<br />2 TR towers for stages, VIP rooms and smaller tents.</p>
       </div>
       <div class="fleet-grid">
-        <figure class="fleet-3d">
-          <canvas id="units" aria-label="3D view of a 4 TR and a 2 TR Breeze tower AC. Drag to turn."></canvas>
-          <figcaption><span>4 TR</span><span>2 TR</span></figcaption>
+        <figure class="product">
+          <canvas id="unitsCanvas" aria-label="3D study of a 4 TR and a 2 TR Breeze tower AC with an outdoor unit. Drag to turn."></canvas>
+          <figcaption>
+            <p class="over over-soft">Product study / 3D</p>
+            <ul><li><span>4 TR</span> tower</li><li><span>2 TR</span> tower</li><li><span>ODU</span> outdoor unit</li></ul>
+          </figcaption>
         </figure>
         <div class="spec">
           <div class="spec-row"><p class="spec-k">4 TR tower AC</p><p class="spec-v">40</p><p class="spec-d">Blue Star split. Hangars, large tents, halls.</p></div>
@@ -147,6 +147,36 @@
     </div>
   </section>
 
+  <section class="build" id="study" aria-labelledby="study-h">
+    <div class="build__stage">
+      <canvas id="studyCanvas" class="build__canvas" aria-hidden="true"></canvas>
+      <img class="build__fallback" src="/assets/work/weddinghall.jpg" alt="" width="1280" height="591" loading="lazy" />
+      <span class="build__dim" aria-hidden="true">20 m × 40 m hangar</span>
+      <div class="build__overlay wrap">
+        <header class="build__head">
+          <p class="over over-soft">A cooling study / 3D</p>
+          <h2 id="study-h">From a covered space<br />to a cooled one.</h2>
+        </header>
+        <ol class="build__steps" aria-label="How a hangar is cooled">
+          <li class="build__step" data-from="0"><span class="build__num">01</span><div><h3>Venue built</h3><p>Grand Sameer Events raises the hangar: frames, roof and walls.</p></div><span class="build__bar" aria-hidden="true"><span></span></span></li>
+          <li class="build__step" data-from="0.5"><span class="build__num">02</span><div><h3>Load check</h3><p>Area, sides, guests and power set the number of units.</p></div><span class="build__bar" aria-hidden="true"><span></span></span></li>
+          <li class="build__step" data-from="0.6"><span class="build__num">03</span><div><h3>Tower units placed</h3><p>Along both long walls, outlets facing the guests.</p></div><span class="build__bar" aria-hidden="true"><span></span></span></li>
+          <li class="build__step" data-from="0.73"><span class="build__num">04</span><div><h3>Outdoor units linked</h3><p>Condensers outside, joined by insulated copper lines.</p></div><span class="build__bar" aria-hidden="true"><span></span></span></li>
+          <li class="build__step" data-from="0.85"><span class="build__num">05</span><div><h3>Cooling on</h3><p>Switched on and checked before guests arrive.</p></div><span class="build__bar" aria-hidden="true"><span></span></span></li>
+        </ol>
+        <div class="build__foot">
+          <dl class="build__readout">
+            <div><dt>Covered area</dt><dd>800 m²</dd></div>
+            <div><dt>Tower units</dt><dd>16 × 4 TR</dd></div>
+            <div><dt>Capacity</dt><dd>64 TR</dd></div>
+            <div><dt>Outdoor units</dt><dd>16</dd></div>
+          </dl>
+          <p class="build__note">Representative layout for a 20 m × 40 m hangar. The unit count is planned for each venue.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="block" id="process" aria-labelledby="process-h">
     <div class="wrap">
       <div class="head">
@@ -163,13 +193,6 @@
         <li><span>04</span><h3>Installation</h3><p>Tested before guests arrive.</p></li>
         <li><span>05</span><h3>Support</h3><p>On call through the event, then dismantled.</p></li>
       </ol>
-      <figure class="plan-stage">
-        <canvas id="hangar" aria-label="3D cutaway of an aluminium hangar with tower ACs along both sides. Drag to look around."></canvas>
-        <figcaption>
-          <span><i class="dot cold"></i>Units along both long sides</span>
-          <span><i class="dot hot"></i>Cold air settles where guests sit</span>
-        </figcaption>
-      </figure>
     </div>
   </section>
 
@@ -259,6 +282,6 @@
 </a>
 
 <script src="/main.js" defer></script>
-<script type="module" src="/scene.js"></script>
+<script type="module" src="/build.js"></script>
 </body>
 </html>
