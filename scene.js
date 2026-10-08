@@ -261,8 +261,8 @@ function hangarScene() {
     pointer.x += (pointer.tx - pointer.x) * 0.04;
     pointer.y += (pointer.ty - pointer.y) * 0.04;
     const theta = 0.68 + Math.sin(time * 0.07) * 0.22 + pointer.x * 0.25;
-    const radius = wide ? 20 : 23;
-    camera.position.set(Math.sin(theta) * radius, 7.2 + pointer.y * 1.4, Math.cos(theta) * radius);
+    const radius = wide ? 22.5 : 15 + 26 / Math.max(camera.aspect, 0.42);
+    camera.position.set(Math.sin(theta) * radius, (wide ? 7.2 : radius * 0.42) + pointer.y * 1.4, Math.cos(theta) * radius);
     target.set(0, 1.4, 0);
     camera.lookAt(target);
   }
@@ -304,8 +304,8 @@ function unitsScene() {
   if (!renderer) return;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 50);
-  camera.position.set(0, 1.35, 5.2);
-  camera.lookAt(0, 0.92, 0);
+  camera.position.set(0, 1.25, 6.4);
+  camera.lookAt(0, 1.0, 0);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x9fb7c9, 1.5));
   const key = new THREE.DirectionalLight(0xffffff, 1.8);
   key.position.set(3, 5, 4);
