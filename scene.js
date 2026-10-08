@@ -165,7 +165,7 @@ function hangarScene() {
   const gable = new THREE.Shape([new THREE.Vector2(-W / 2, 0), new THREE.Vector2(W / 2, 0), new THREE.Vector2(W / 2, E), new THREE.Vector2(0, R), new THREE.Vector2(-W / 2, E)]);
   add(new THREE.Mesh(new THREE.ShapeGeometry(gable), pvc)).position.z = -D / 2 - 0.1;
 
-  for (const sx of [-1, 1]) {
+  for (const sx of [-1]) {
     const band = add(new THREE.Mesh(new THREE.PlaneGeometry(D + 0.3, 0.45), valance), false);
     band.position.set(sx * (W / 2 + 0.12), E - 0.12, 0);
     band.rotation.y = Math.PI / 2;
@@ -224,7 +224,7 @@ function hangarScene() {
     scene.add(pts);
     return { geo, count, p: geo.attributes.position.array, al: geo.attributes.alpha.array, v: new Float32Array(count * 3), age: new Float32Array(count), life: new Float32Array(count) };
   }
-  const cold = cloud(small ? 500 : 1000, 0x8fd3f0, 0.55);
+  const cold = cloud(small ? 500 : 1000, 0x4fb8e6, 0.6);
   const hot = cloud(small ? 60 : 120, 0xffb466, 2.6);
   const spawnCold = (i) => {
     const e = emitters[(Math.random() * emitters.length) | 0], j = i * 3;
@@ -251,7 +251,7 @@ function hangarScene() {
       cold.p[j] += cold.v[j] * dt; cold.p[j + 1] += cold.v[j + 1] * dt; cold.p[j + 2] += cold.v[j + 2] * dt;
       if (cold.p[j + 1] < 0.35) { cold.p[j + 1] = 0.35; cold.v[j + 1] = 0; }
       const a = cold.age[i] / cold.life[i];
-      cold.al[i] = Math.min(1, a * 5) * (1 - a) * 0.22;
+      cold.al[i] = Math.min(1, a * 5) * (1 - a) * 0.5;
     }
     for (let i = 0; i < hot.count; i++) {
       const j = i * 3;
