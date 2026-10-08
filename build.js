@@ -50,14 +50,14 @@ function coolingStudy() {
     if (Math.abs(target - cur) < 0.0005) cur = target;
     scene.set({ t: cur, px, py });
     paintSteps(cur);
-    const moving = cur !== target || Math.abs(tpx - px) > 0.001 || Math.abs(tpy - py) > 0.001;
+    const moving = cur !== target || Math.abs(tpx - px) > 0.001 || Math.abs(tpy - py) > 0.001 || (!reduced && scene.cooling);
     if (visible && moving) raf = requestAnimationFrame(frame);
   };
   const kick = () => { if (!raf && visible && scene) raf = requestAnimationFrame(frame); };
 
   const start = () => {
     if (scene) return;
-    scene = createScene(canvas, { mode: 'hangar', shift: matchMedia('(min-width: 1000px)').matches ? 0.26 : 0 });
+    scene = createScene(canvas, { mode: 'hangar', still: reduced, shift: matchMedia('(min-width: 1000px)').matches ? 0.26 : 0 });
     if (!scene) { section.classList.add('build--static'); return; }
     cur = target = readScroll();
     scene.set({ t: cur });

@@ -9,7 +9,7 @@
 export const HANGAR = { span: 20, length: 40, bays: 8, eave: 4.2, rise: 2.6 };
 export const UNITS_PER_SIDE = 8;
 
-const M = { ALU: 1, STEEL: 2, ROOF: 3, WALL: 4, DECK: 5, CARPET: 6, DOOR: 7, PERSON: 8, LAMP: 9, UNIT: 10, GRILLE: 11, LED: 12, ODU: 13, FAN: 14, COPPER: 15, TABLE: 16 };
+const M = { ALU: 1, STEEL: 2, ROOF: 3, WALL: 4, DECK: 5, CARPET: 6, DOOR: 7, PERSON: 8, LAMP: 9, UNIT: 10, GRILLE: 11, LED: 12, ODU: 13, FAN: 14, COPPER: 15, TABLE: 16, VANE: 17, SEAM: 18, INTAKE: 19 };
 
 const v3 = (x, y, z) => [x, y, z];
 const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -71,6 +71,9 @@ class Builder {
     this.quad(A[3], A[2], A[1], A[0], a);
     this.quad(B[0], B[1], B[2], B[3], a);
   }
+  quadN(p, n, a, uv = [[0, 0], [1, 0], [1, 1], [0, 1]]) {
+    for (const k of [0, 1, 2, 0, 2, 3]) this.vert(p[k], n[k], a, uv[k]);
+  }
   box(min, max, a) {
     const [x0, y0, z0] = min, [x1, y1, z1] = max;
     const P = (x, y, z) => [x, y, z];
@@ -98,67 +101,87 @@ class Builder {
 }
 
 /*
- * A floor-standing tower AC (indoor), built facing +f where f is the unit normal
- * in the xz plane. Local frame: r = right, f = front, y = up. Dimensions in metres.
+ * Floor-standing tower AC, modelled on the white Blue Star towers in the venue photos:
+ * a plain rectangular cabinet with softly rounded vertical edges, a black louvred outlet
+ * across the top, a small display window, panel seams and side intakes.
+ * Built facing +f (unit vector in xz). Local frame: r = right, f = front, y = up. Metres.
  */
 function towerUnit(b, base, f, scale, timing) {
-  const W = 0.6 * scale, D = 0.42 * scale, H = 1.86 * scale, ch = 0.045 * scale;
+  const W = 0.56 * scale, D = 0.40 * scale, H = 1.85 * scale, rc = 0.04 * scale;
   const r = norm(cross([0, 1, 0], f));
   const P = (x, y, z) => add(base, add(add(mul(r, x), [0, y, 0]), mul(f, z)));
-  const a = (mat, extra = {}) => ({ piv: add(base, [0, H * 0.5, 0]), dir: [0, 0, 0], ...timing, ...extra, mat });
-  const hw = W / 2, hd = D / 2;
-  // chamfered octagonal body: eight vertical faces + top cap
-  const ring = [[-hw + ch, hd], [hw - ch, hd], [hw, hd - ch], [hw, -hd + ch], [hw - ch, -hd], [-hw + ch, -hd], [-hw, -hd + ch], [-hw, hd - ch]];
-  const y0 = 0.05 * scale, y1 = H;
-  for (let i = 0; i < 8; i++) {
-    const [x0, z0] = ring[i], [x1, z1] = ring[(i + 1) % 8];
-    b.quad(P(x0, y0, z0), P(x1, y0, z1), P(x1, y1, z1), P(x0, y1, z0), a(M.UNIT));
+  const Nl = (x, z) => norm(add(mul(r, x), mul(f, z)));
+  const a = (mat) => ({ piv: add(base, [0, H * 0.5, 0]), dir: [0, 0, 0], ...timing, mat });
+  const hw = W / 2, hd = D / 2, y0 = 0.045 * scale, y1 = H;
+  // rounded-rectangle footprint (4 segments per corner) with smooth normals
+  const ring = [];
+  [[hw - rc, hd - rc, 0], [hw - rc, -hd + rc, -90], [-hw + rc, -hd + rc, 180], [-hw + rc, hd - rc, 90]].forEach(([cx, cz, a0]) => {
+    for (let k = 0; k <= 4; k++) {
+      const ang = ((a0 + 90 - k * 22.5) * Math.PI) / 180;
+      const nx = Math.cos(ang), nz = Math.sin(ang);
+      ring.push({ x: cx + nx * rc, z: cz + nz * rc, nx, nz });
+    }
+  });
+  for (let i = 0; i < ring.length; i++) {
+    const p = ring[i], q = ring[(i + 1) % ring.length];
+    const n0 = Nl(p.nx, p.nz), n1 = Nl(q.nx, q.nz);
+    b.quadN([P(p.x, y0, p.z), P(q.x, y0, q.z), P(q.x, y1, q.z), P(p.x, y1, p.z)], [n0, n1, n1, n0], a(M.UNIT),
+      [[0, y0 / H], [1, y0 / H], [1, 1], [0, 1]]);
   }
-  const top = ring.map(([x, z]) => P(x, y1, z)), cTop = P(0, y1, 0);
-  for (let i = 0; i < 8; i++) b.tri(cTop, top[(i + 1) % 8], top[i], a(M.UNIT), [0.5, 0.5], [0, 0], [1, 0], [0, 1, 0]);
-  // dark plinth
-  const pl = [P(-hw + 0.02, 0, -hd + 0.02), P(hw - 0.02, y0, hd - 0.02)];
-  b.box([Math.min(pl[0][0], pl[1][0]), 0, Math.min(pl[0][2], pl[1][2])], [Math.max(pl[0][0], pl[1][0]), y0, Math.max(pl[0][2], pl[1][2])], a(M.STEEL));
-  // louvred outlet (upper front): dark recess + angled slats
-  const fz = hd + 0.004 * scale;
-  const oy0 = H * 0.66, oy1 = H * 0.94, ow = W * 0.78;
-  b.quad(P(-ow / 2, oy0, fz), P(ow / 2, oy0, fz), P(ow / 2, oy1, fz), P(-ow / 2, oy1, fz), a(M.GRILLE));
-  const slats = 7;
-  for (let i = 0; i < slats; i++) {
-    const y = lerp(oy0 + 0.03 * scale, oy1 - 0.02 * scale, i / (slats - 1));
-    const p0 = P(-ow / 2 + 0.01, y, fz + 0.004), p1 = P(ow / 2 - 0.01, y, fz + 0.004);
-    const tilt = mul([0, -1, 0], 0.012 * scale);
-    b.quad(p0, p1, add(add(p1, mul(f, 0.035 * scale)), tilt), add(add(p0, mul(f, 0.035 * scale)), tilt), a(M.UNIT));
+  const cTop = P(0, y1, 0);
+  for (let i = 0; i < ring.length; i++) {
+    const p = ring[i], q = ring[(i + 1) % ring.length];
+    b.tri(cTop, P(q.x, y1, q.z), P(p.x, y1, p.z), a(M.UNIT), [0.5, 0.5], [0, 0], [1, 0], [0, 1, 0]);
   }
-  // display window + accent line
-  const dy = H * 0.58;
-  b.quad(P(-W * 0.12, dy - 0.03 * scale, fz), P(W * 0.12, dy - 0.03 * scale, fz), P(W * 0.12, dy + 0.03 * scale, fz), P(-W * 0.12, dy + 0.03 * scale, fz), a(M.LED));
-  b.quad(P(-ow / 2, H * 0.62, fz), P(ow / 2, H * 0.62, fz), P(ow / 2, H * 0.628, fz), P(-ow / 2, H * 0.628, fz), a(M.LED));
-  // lower intake grille (vertical slots, shaded procedurally)
-  const iy0 = H * 0.08, iy1 = H * 0.34, iw = W * 0.7;
-  b.quad(P(-iw / 2, iy0, fz), P(iw / 2, iy0, fz), P(iw / 2, iy1, fz), P(-iw / 2, iy1, fz), a(M.GRILLE, {}));
-  return { outlet: P(0, (oy0 + oy1) / 2, fz + 0.05) };
+  // recessed dark plinth
+  const pb = [P(-hw + 0.03, 0, -hd + 0.03), P(hw - 0.03, y0, hd - 0.03)];
+  b.box([Math.min(pb[0][0], pb[1][0]), base[1], Math.min(pb[0][2], pb[1][2])], [Math.max(pb[0][0], pb[1][0]), base[1] + y0, Math.max(pb[0][2], pb[1][2])], a(M.STEEL));
+
+  const fz = hd + 0.002 * scale;
+  const face = (x0, y0q, x1, y1q, z, mat) => b.quad(P(x0, y0q, z), P(x1, y0q, z), P(x1, y1q, z), P(x0, y1q, z), a(mat));
+  // outlet: black field across the top with horizontal vanes
+  const ox = hw - 0.05 * scale, oy0 = H * 0.775, oy1 = H * 0.955;
+  face(-ox, oy0, ox, oy1, fz, M.GRILLE);
+  const vanes = 9;
+  for (let i = 0; i < vanes; i++) {
+    const y = lerp(oy0 + 0.012 * scale, oy1 - 0.012 * scale, i / (vanes - 1));
+    const t = 0.006 * scale, dz = 0.03 * scale;
+    const p0 = P(-ox + 0.012, y, fz), p1 = P(ox - 0.012, y, fz);
+    const tip = add(mul(f, dz), [0, -0.009 * scale, 0]);
+    b.quad(p0, p1, add(p1, tip), add(p0, tip), a(M.VANE));
+    b.quad(add(p0, [0, -t, 0]), add(p0, tip), add(p1, tip), add(p1, [0, -t, 0]), a(M.VANE));
+  }
+  // panel seams and the display window
+  face(-hw + 0.01, H * 0.742, hw - 0.01, H * 0.746, fz, M.SEAM);
+  face(-hw + 0.01, H * 0.300, hw - 0.01, H * 0.304, fz, M.SEAM);
+  face(-W * 0.11, H * 0.655, W * 0.11, H * 0.695, fz + 0.001, M.LED);
+  // side intakes (both sides, lower half)
+  [-1, 1].forEach((sx) => {
+    const x = sx * (hw + 0.002 * scale), z0 = -hd * 0.62, z1 = hd * 0.62, ya = H * 0.1, yb = H * 0.46;
+    const q = sx > 0 ? [P(x, ya, z1), P(x, ya, z0), P(x, yb, z0), P(x, yb, z1)] : [P(x, ya, z0), P(x, ya, z1), P(x, yb, z1), P(x, yb, z0)];
+    b.quad(q[0], q[1], q[2], q[3], a(M.INTAKE));
+  });
+  return { outlet: P(0, (oy0 + oy1) / 2, fz + 0.05), f };
 }
 
-/* Outdoor condenser: box with a fan guard on the long face (facing +f). */
+/* Outdoor condenser: white casing, round fan guard on the front, coil on the back. */
 function outdoorUnit(b, base, f, scale, timing) {
-  const W = 0.95 * scale, D = 0.38 * scale, H = 0.82 * scale;
+  const W = 0.95 * scale, D = 0.36 * scale, H = 0.80 * scale;
   const r = norm(cross([0, 1, 0], f));
   const P = (x, y, z) => add(base, add(add(mul(r, x), [0, y, 0]), mul(f, z)));
   const a = (mat) => ({ piv: add(base, [0, H * 0.5, 0]), dir: [0, 0, 0], ...timing, mat });
-  const hw = W / 2, hd = D / 2, y0 = 0.08 * scale;
+  const hw = W / 2, hd = D / 2, y0 = 0.07 * scale;
   const c = [P(-hw, y0, -hd), P(hw, y0, -hd), P(hw, y0, hd), P(-hw, y0, hd), P(-hw, H, -hd), P(hw, H, -hd), P(hw, H, hd), P(-hw, H, hd)];
-  b.quad(c[3], c[2], c[6], c[7], a(M.FAN));   // front with fan guard (uv drives the pattern)
-  b.quad(c[1], c[0], c[4], c[5], a(M.ODU));
-  b.quad(c[0], c[3], c[7], c[4], a(M.ODU));
+  b.quad(c[3], c[2], c[6], c[7], a(M.FAN));
+  b.quad(c[1], c[0], c[4], c[5], a(M.GRILLE));
+  b.quad(c[0], c[3], c[7], c[4], a(M.GRILLE));
   b.quad(c[2], c[1], c[5], c[6], a(M.ODU));
   b.quad(c[7], c[6], c[5], c[4], a(M.ODU));
-  // feet
-  [-hw + 0.08, hw - 0.08].forEach((x) => {
-    const p0 = P(x - 0.03, 0, -hd), p1 = P(x + 0.03, y0, hd);
-    b.box([Math.min(p0[0], p1[0]), 0, Math.min(p0[2], p1[2])], [Math.max(p0[0], p1[0]), y0, Math.max(p0[2], p1[2])], a(M.STEEL));
+  [-hw + 0.1, hw - 0.1].forEach((x) => {
+    const p0 = P(x - 0.025, 0, -hd - 0.03), p1 = P(x + 0.025, y0, hd + 0.03);
+    b.box([Math.min(p0[0], p1[0]), base[1], Math.min(p0[2], p1[2])], [Math.max(p0[0], p1[0]), base[1] + y0, Math.max(p0[2], p1[2])], a(M.STEEL));
   });
-  return { port: P(hw * 0.7, H * 0.35, -hd) };
+  return { port: P(hw * 0.78, H * 0.3, -hd) };
 }
 
 function buildHangar(cfg = HANGAR) {
@@ -284,7 +307,7 @@ function buildHangar(cfg = HANGAR) {
       const p0 = od.port, p1 = v3(p0[0], 1.5, sd * (hs + 0.15)), p2 = v3(x + 0.12, 1.5, sd * (hs - 0.62));
       const ca = { piv: p0, dir: ZERO, t0: t1 + 0.03, dur: 0.04, raw: true, mat: M.COPPER };
       b.beam(p0, p1, 0.05, 0.05, ca); b.beam(p1, p2, 0.05, 0.05, ca);
-      units.push(tw.outlet);
+      units.push({ p: tw.outlet, f });
     });
   }
 
@@ -294,7 +317,7 @@ function buildHangar(cfg = HANGAR) {
     b.box(v3(x - 0.15, 0, z - 0.12), v3(x + 0.15, 0.22, z + 0.12), { piv: v3(x, 0.1, z), dir: ZERO, t0: 0.86 + k * 0.004, dur: 0.03, mat: M.LAMP });
   });
   const side = hs + 4.2;
-  const people = [[-4.5, -1.2], [-5.2, -0.4], [-7.8, 2.6], [-3.1, 4.9], [-9.6, -5.5], [L * 0.22, side], [L * 0.245, side + 0.5], [L * 0.6, side - 0.4], [L * 0.78, -side]];
+  const people = [[L + 4.5, -1.2], [L + 5.2, -0.4], [L + 7.4, 2.6], [L + 3.1, 4.9], [L + 8.6, -5.5], [L * 0.22, side], [L * 0.245, side + 0.5], [L * 0.6, side - 0.4], [L * 0.78, -side]];
   people.forEach(([x, z], i) => {
     const h = 1.64 + ((i * 37) % 10) / 60, a = { piv: v3(x, 0, z), dir: ZERO, t0: 0.88 + i * 0.006, dur: 0.04, mat: M.PERSON };
     b.box(v3(x - 0.09, 0, z - 0.17), v3(x + 0.09, h * 0.47, z + 0.17), a);
@@ -302,16 +325,39 @@ function buildHangar(cfg = HANGAR) {
     b.box(v3(x - 0.1, h * 0.84, z - 0.09), v3(x + 0.1, h, z + 0.09), a);
   });
 
-  return { data: new Float32Array(b.d), units };
+  // supply-air streamlines from each outlet: thin ribbons that throw inward and sink
+  const air = [];
+  units.forEach(({ p, f }, ui) => {
+    const lines = 7;
+    for (let li = 0; li < lines; li++) {
+      const th = ((li / (lines - 1)) - 0.5) * 0.95;
+      const dir = norm(v3(f[0] * Math.cos(th) + f[2] * Math.sin(th), 0, -f[0] * Math.sin(th) + f[2] * Math.cos(th)));
+      const side = norm(cross(v3(0, 1, 0), dir));
+      const throwL = 6.8 - Math.abs(th) * 1.6, seed = ((ui * 13 + li * 7) % 11) / 11;
+      const yOff = (li % 3 - 1) * 0.06;
+      const segs = 22;
+      const pt = (s) => add(add(p, mul(dir, s * throwL)), v3(0, yOff - 0.95 * Math.pow(s, 1.7), 0));
+      for (let k = 0; k < segs; k++) {
+        const s0 = k / segs, s1 = (k + 1) / segs;
+        const w0 = 0.025 + 0.08 * s0, w1 = 0.025 + 0.08 * s1;
+        const A0 = add(pt(s0), mul(side, -w0)), B0 = add(pt(s0), mul(side, w0));
+        const A1 = add(pt(s1), mul(side, -w1)), B1 = add(pt(s1), mul(side, w1));
+        const V = (q, ss, ww) => air.push(q[0], q[1], q[2], ss, ww, seed);
+        V(A0, s0, -1); V(B0, s0, 1); V(B1, s1, 1); V(A0, s0, -1); V(B1, s1, 1); V(A1, s1, -1);
+      }
+    }
+  });
+
+  return { data: new Float32Array(b.d), units, air: new Float32Array(air) };
 }
 
 /* Product study: a 4 TR and a 2 TR tower side by side, with an outdoor unit behind. */
 function buildUnits() {
   const b = new Builder(1);
   const T = { t0: 0, dur: 0.001, raw: true };
-  towerUnit(b, v3(-0.55, 0, 0), v3(0, 0, 1), 1, T);
-  towerUnit(b, v3(0.55, 0, 0.05), v3(0, 0, 1), 0.86, T);
-  outdoorUnit(b, v3(1.75, 0, -0.55), v3(-0.5, 0, 0.87), 1, T);
+  towerUnit(b, v3(-0.5, 0, 0.1), v3(0, 0, 1), 1, T);
+  towerUnit(b, v3(0.42, 0, 0.0), v3(0, 0, 1), 0.82, T);
+  outdoorUnit(b, v3(1.55, 0, -0.75), norm(v3(-0.35, 0, 0.94)), 1, T);
   return { data: new Float32Array(b.d), units: [] };
 }
 
@@ -345,7 +391,7 @@ void main() {
 const COMMON = `
 precision highp float;
 uniform vec3 u_cam, u_sun, u_bg;
-uniform float u_lights, u_cool, u_hs;
+uniform float u_lights, u_cool, u_hs, u_studio, u_floor, u_time;
 vec3 tonemap(vec3 c) { c *= 0.95; return clamp((c * (2.51 * c + 0.03)) / (c * (2.43 * c + 0.59) + 0.14), 0.0, 1.0); }
 vec3 toSrgb(vec3 c) { return pow(c, vec3(1.0 / 2.2)); }
 vec3 sky(vec3 r) {
@@ -364,8 +410,12 @@ void main() {
   vec3 H = normalize(L + V);
   float ndl = max(dot(N, L), 0.0), wrap = max((dot(N, L) + 0.45) / 1.45, 0.0);
   float dusk = 1.0 - 0.78 * u_lights;
-  vec3 sunC = vec3(1.0, 0.84, 0.66) * 2.2 * dusk;
+  vec3 sunC = mix(vec3(1.0, 0.84, 0.66) * 2.2 * dusk, vec3(1.0, 0.985, 0.97) * 2.3, u_studio);
   vec3 hemi = mix(vec3(0.026, 0.025, 0.026), vec3(0.17, 0.19, 0.22), N.y * 0.5 + 0.5) * mix(1.0, 0.6, u_lights);
+  hemi = mix(hemi, mix(vec3(0.05, 0.055, 0.065), vec3(0.30, 0.32, 0.36), N.y * 0.5 + 0.5), u_studio);
+  vec3 rimL = normalize(vec3(0.7, 0.35, -0.65));
+  vec3 rim = vec3(0.55, 0.72, 1.0) * pow(max(dot(N, rimL), 0.0), 2.0) * 0.55 * u_studio;
+  float ao = mix(0.5, 1.0, smoothstep(0.0, 0.32, v_wpos.y - u_floor));
   float fres = pow(1.0 - max(dot(N, V), 0.0), 5.0);
   vec3 warm = vec3(1.0, 0.72, 0.44);
   vec3 cool = vec3(0.30, 0.66, 1.0);
@@ -391,9 +441,9 @@ void main() {
   } else if (m < 6.5) {                                  // charcoal carpet; cools from the walls inward
     col = vec3(0.055, 0.062, 0.075) * (hemi * 1.8 + sunC * wrap * 0.5) * (1.0 + u_lights * 1.2);
     float fromWall = u_hs - abs(v_wpos.z);
-    float reach = mix(0.0, u_hs + 1.0, u_cool);
+    float reach = mix(0.0, u_hs + 4.5, u_cool);
     float c = (1.0 - smoothstep(reach - 3.5, reach, fromWall)) * u_cool;
-    col += cool * c * (0.10 + 0.08 * (1.0 - fromWall / u_hs));
+    col += cool * c * (0.05 + 0.07 * (1.0 - fromWall / u_hs));
     col += warm * u_lights * 0.035;
   } else if (m < 7.5) {
     col = mix(vec3(0.015), vec3(1.2, 0.85, 0.5), u_lights);
@@ -402,37 +452,60 @@ void main() {
     col += warm * u_lights * 0.04 * (1.0 - N.y);
   } else if (m < 9.5) {
     col = mix(vec3(0.05), vec3(1.6, 1.1, 0.62), u_lights);
-  } else if (m < 10.5) {                                 // tower cabinet: satin white plastic
-    vec3 base = vec3(0.80, 0.815, 0.83);
-    float spec = pow(max(dot(N, H), 0.0), 40.0);
-    col = base * (hemi * 1.5 + sunC * wrap * 0.42) + sunC * spec * 0.12 + sky(reflect(-V, N)) * fres * 0.35;
-    col += base * interior * 2.2;
-  } else if (m < 11.5) {                                 // outlet recess / intake grille
-    float slot = abs(N.y) > 0.5 ? 0.0 : step(0.5, fract(v_uv.x * 34.0));
-    float rows = step(0.55, fract(v_uv.y * 9.0));
-    vec3 base = mix(vec3(0.03, 0.035, 0.04), vec3(0.11, 0.12, 0.13), max(slot * 0.6, rows * 0.4));
-    col = base * (hemi * 2.0 + sunC * wrap * 0.3);
-    col += cool * u_cool * 0.08 * rows;
-  } else if (m < 12.5) {                                 // display and accent line
-    col = mix(vec3(0.02, 0.05, 0.10), vec3(0.25, 0.75, 1.6), u_cool);
+  } else if (m < 10.5) {                                 // tower cabinet: white powder-coat / ABS
+    vec3 base = vec3(0.90, 0.91, 0.915);
+    float spec = pow(max(dot(N, H), 0.0), 60.0);
+    col = base * (hemi * 1.35 + sunC * wrap * 0.46 + rim) + sunC * spec * 0.10 + sky(reflect(-V, N)) * fres * 0.25;
+    col += base * interior * 2.0;
+    col *= ao;
+  } else if (m < 11.5) {                                 // outlet field / intake louvres
+    float rows = smoothstep(0.35, 0.5, fract(v_uv.y * 14.0)) * (1.0 - smoothstep(0.75, 0.9, fract(v_uv.y * 14.0)));
+    vec3 base = mix(vec3(0.012, 0.013, 0.015), vec3(0.07, 0.075, 0.08), rows * 0.7);
+    col = base * (hemi * 2.0 + sunC * wrap * 0.35 + rim);
+    col += cool * u_cool * 0.03 * (1.0 - u_studio);
+    col *= ao;
+  } else if (m < 12.5) {                                 // display window: dark glass, blue digits when running
+    vec2 q = v_uv;
+    float digits = step(0.18, q.x) * step(q.x, 0.62) * step(0.28, q.y) * step(q.y, 0.72) * step(0.35, fract(q.x * 9.0));
+    float dot2 = step(0.74, q.x) * step(q.x, 0.82) * step(0.4, q.y) * step(q.y, 0.6);
+    col = vec3(0.01, 0.012, 0.016) + sky(reflect(-V, N)) * 0.3 + sunC * pow(max(dot(N, H), 0.0), 120.0) * 0.4;
+    col += vec3(0.25, 0.65, 1.4) * (digits + dot2 * 0.6) * max(u_cool, u_studio);
   } else if (m < 13.5) {                                 // condenser casing
-    vec3 base = vec3(0.58, 0.60, 0.61);
-    col = base * (hemi * 1.4 + sunC * wrap * 0.45) + sunC * pow(max(dot(N, H), 0.0), 30.0) * 0.1;
-  } else if (m < 14.5) {                                 // condenser front with fan guard
-    vec2 q = (v_uv - vec2(0.38, 0.5)) * vec2(2.3, 1.0);
-    float r = length(q);
-    float guard = step(r, 0.42) * (step(0.5, fract(r * 22.0)) * 0.6 + step(0.92, fract(atan(q.y, q.x) * 1.27)) * 0.4);
-    float fan = step(r, 0.42);
-    vec3 base = mix(vec3(0.58, 0.60, 0.61), vec3(0.04, 0.045, 0.05), fan * 0.85);
-    base = mix(base, vec3(0.35, 0.36, 0.37), guard * 0.6);
-    float fins = step(0.62, v_uv.x) * step(0.5, fract(v_uv.y * 30.0));
-    base *= 1.0 - fins * 0.25;
-    col = base * (hemi * 1.4 + sunC * wrap * 0.45);
-  } else if (m < 15.5) {                                 // copper line set (insulated, light)
-    col = vec3(0.70, 0.70, 0.68) * (hemi * 1.5 + sunC * wrap * 0.4);
-  } else {                                               // table linen
-    vec3 base = vec3(0.86, 0.84, 0.80);
-    col = base * (hemi * 1.4 + sunC * wrap * 0.3) + base * interior * 2.4;
+    vec3 base = vec3(0.86, 0.87, 0.875);
+    col = base * (hemi * 1.35 + sunC * wrap * 0.46 + rim) + sunC * pow(max(dot(N, H), 0.0), 50.0) * 0.08;
+    col *= ao;
+  } else if (m < 14.5) {                                 // condenser front: casing with a round fan guard
+    vec2 q = (v_uv - vec2(0.40, 0.52)) * vec2(2.375, 1.0);
+    float rr = length(q), R0 = 0.40;
+    float inG = 1.0 - smoothstep(R0 - 0.004, R0 + 0.004, rr);
+    float ang = atan(q.y, q.x);
+    float blades = smoothstep(0.55, 0.9, sin(ang * 3.0 + rr * 5.0)) * step(0.07, rr);
+    float rings = smoothstep(0.62, 0.8, fract(rr * 26.0)) * (1.0 - smoothstep(0.8, 0.98, fract(rr * 26.0)));
+    float spokes = 1.0 - smoothstep(0.02, 0.045, abs(fract(ang * 1.9099) - 0.5) * rr * 2.0 + 0.0);
+    float bezel = smoothstep(R0 - 0.02, R0, rr) * (1.0 - smoothstep(R0 + 0.01, R0 + 0.035, rr));
+    vec3 casing = vec3(0.86, 0.87, 0.875);
+    vec3 cavity = mix(vec3(0.015, 0.016, 0.018), vec3(0.09, 0.095, 0.1), blades);
+    vec3 base = mix(casing, cavity, inG);
+    base = mix(base, vec3(0.55, 0.56, 0.57), clamp(rings * 0.75 + spokes * 0.6, 0.0, 1.0) * inG);
+    base *= 1.0 - bezel * 0.35;
+    col = base * (hemi * 1.35 + sunC * wrap * 0.46 + rim) + sunC * pow(max(dot(N, H), 0.0), 50.0) * 0.06 * (1.0 - inG);
+    col *= ao;
+  } else if (m < 15.5) {                                 // insulated line set
+    col = vec3(0.12, 0.12, 0.125) * (hemi * 1.8 + sunC * wrap * 0.4);
+  } else if (m < 16.5) {                                 // banquet rounds
+    vec3 base = vec3(0.56, 0.57, 0.60);
+    col = base * (hemi * 1.2 + sunC * wrap * 0.25) + base * interior * 1.6;
+  } else if (m < 17.5) {                                 // outlet vanes
+    vec3 base = vec3(0.05, 0.052, 0.056);
+    col = base * (hemi * 2.0 + sunC * wrap * 0.4 + rim) + sunC * pow(max(dot(N, H), 0.0), 40.0) * 0.18 + sky(reflect(-V, N)) * 0.06;
+  } else if (m < 18.5) {                                 // panel seam
+    col = vec3(0.25, 0.26, 0.27) * (hemi * 1.2 + sunC * wrap * 0.3);
+  } else {                                               // side intake: slotted casing
+    float f2 = fract(v_uv.y * 18.0);
+    float slot = smoothstep(0.5, 0.58, f2) * (1.0 - smoothstep(0.86, 0.94, f2));
+    vec3 base = mix(vec3(0.88, 0.89, 0.895), vec3(0.05, 0.055, 0.06), slot * 0.9);
+    col = base * (hemi * 1.35 + sunC * wrap * 0.46 + rim);
+    col *= ao;
   }
   float dist = length(u_cam - v_wpos);
   col = mix(col, u_bg, (1.0 - exp(-dist * 0.0045)) * 0.55);
@@ -489,6 +562,33 @@ void main() {
   gl_FragColor = vec4(toSrgb(tonemap(col)) * fade, fade);
 }`;
 
+const AVERT = `
+attribute vec3 a_pos;
+attribute vec3 a_swd;
+uniform mat4 u_vp;
+varying vec3 v_swd;
+varying vec3 v_wpos;
+void main() { v_swd = a_swd; v_wpos = a_pos; gl_Position = u_vp * vec4(a_pos, 1.0); }`;
+
+const AFRAG = `
+precision highp float;
+uniform float u_cool, u_time;
+uniform vec3 u_cam;
+varying vec3 v_swd;
+varying vec3 v_wpos;
+void main() {
+  float s = v_swd.x, w = v_swd.y, seed = v_swd.z;
+  float reach = clamp(u_cool * 1.25, 0.0, 1.0);
+  float grow = 1.0 - smoothstep(reach - 0.12, reach, s);
+  float body = pow(1.0 - s, 1.3) * smoothstep(0.0, 0.05, s);
+  float across = 1.0 - w * w;
+  float ph = fract(s * 3.2 - u_time * 0.42 + seed);
+  float pulse = smoothstep(0.0, 0.18, ph) * (1.0 - smoothstep(0.3, 0.62, ph));
+  float a = body * across * grow * (0.22 + 0.78 * pulse) * u_cool;
+  float fog = exp(-length(u_cam - v_wpos) * 0.006);
+  gl_FragColor = vec4(vec3(0.32, 0.64, 1.0) * a * 0.85 * fog, 0.0);
+}`;
+
 function compile(gl, type, src) {
   const s = gl.createShader(type);
   gl.shaderSource(s, src);
@@ -509,9 +609,9 @@ function program(gl, vs, fs) {
 const KEYS = [
   { t: 0.0, az: -58, el: 56, dist: 96 },
   { t: 0.3, az: -46, el: 36, dist: 90 },
-  { t: 0.56, az: -36, el: 30, dist: 84 },
-  { t: 0.8, az: -30, el: 25, dist: 78 },
-  { t: 1.0, az: -27, el: 21, dist: 74 },
+  { t: 0.52, az: -40, el: 30, dist: 84 },
+  { t: 0.7, az: -58, el: 28, dist: 80 },
+  { t: 1.0, az: -66, el: 25, dist: 78 },
 ];
 function cameraAt(t) {
   let i = 0;
@@ -530,8 +630,8 @@ export function createScene(canvas, opts = {}) {
   if (!gl) return null;
   gl.getExtension('OES_standard_derivatives');
   const deriv = '#extension GL_OES_standard_derivatives : enable\n';
-  let prog, gprog;
-  try { prog = program(gl, VERT, FRAG); gprog = program(gl, GVERT, deriv + GFRAG); }
+  let prog, gprog, aprog;
+  try { prog = program(gl, VERT, FRAG); gprog = program(gl, GVERT, deriv + GFRAG); aprog = program(gl, AVERT, AFRAG); }
   catch (err) { console.warn('[breeze-3d]', err); return null; }
 
   const mode = opts.mode || 'hangar';
@@ -543,6 +643,16 @@ export function createScene(canvas, opts = {}) {
   const attrs = [['a_pos', 3, 0], ['a_nrm', 3, 3], ['a_piv', 3, 6], ['a_dir', 3, 9], ['a_anim', 4, 12], ['a_mat', 1, 16], ['a_uv', 2, 17]]
     .map(([n, size, off]) => ({ loc: gl.getAttribLocation(prog, n), size, off }));
 
+  const air = built.air || new Float32Array(0);
+  const airCount = air.length / 6;
+  const abuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, abuf);
+  gl.bufferData(gl.ARRAY_BUFFER, air.length ? air : new Float32Array(6), gl.STATIC_DRAW);
+  const aPos = gl.getAttribLocation(aprog, 'a_pos'), aSwd = gl.getAttribLocation(aprog, 'a_swd');
+  const au = { vp: gl.getUniformLocation(aprog, 'u_vp'), cool: gl.getUniformLocation(aprog, 'u_cool'), time: gl.getUniformLocation(aprog, 'u_time'), cam: gl.getUniformLocation(aprog, 'u_cam') };
+  const still = !!opts.still;
+  const t0 = performance.now();
+
   const G = mode === 'units' ? 30 : 420;
   const cx = mode === 'units' ? 0 : 20;
   const gbuf = gl.createBuffer();
@@ -552,12 +662,12 @@ export function createScene(canvas, opts = {}) {
 
   const U = (p, n) => gl.getUniformLocation(p, n);
   const u = {}, gu = {};
-  ['u_vp', 'u_t', 'u_cam', 'u_sun', 'u_bg', 'u_lights', 'u_cool', 'u_hs'].forEach((n) => { u[n] = U(prog, n); });
+  ['u_vp', 'u_t', 'u_cam', 'u_sun', 'u_bg', 'u_lights', 'u_cool', 'u_hs', 'u_studio', 'u_floor', 'u_time'].forEach((n) => { u[n] = U(prog, n); });
   ['u_vp', 'u_cam', 'u_sun', 'u_bg', 'u_lights', 'u_cool', 'u_hs', 'u_fp', 'u_center', 'u_radius', 'u_outline', 'u_shadow', 'u_grid', 'u_accent', 'u_gstep'].forEach((n) => { gu[n] = U(gprog, n); });
 
   const bg = [0.035, 0.042, 0.048];
   const accent = [0.42, 0.66, 1.0];
-  const sun = norm(v3(-0.9, 0.62, 0.22));
+  const sun = mode === 'units' ? norm(v3(-0.55, 0.75, 0.55)) : norm(v3(-0.9, 0.62, 0.22));
   const { span: S, length: L, eave: H, rise: R } = HANGAR;
 
   let state = { t: 0, px: 0, py: 0, az: -30, shift: opts.shift || 0 };
@@ -575,17 +685,17 @@ export function createScene(canvas, opts = {}) {
     const aspect = w / h;
     let target, dist, az, el, fov, lights, cool, shadow, outline, grid, gstep, fp, center, radius, t;
     if (mode === 'units') {
-      t = 1; target = v3(0, 0.95, -0.2); az = (state.az * Math.PI) / 180; el = (13 * Math.PI) / 180;
-      dist = 6.4 * (aspect < 1 ? 1.25 / aspect : 1); fov = 26;
-      lights = 0.25; cool = 1; shadow = 1; outline = 1; grid = 1; gstep = 0.25;
-      fp = [-1.0, -1.6, 1.0, 0.4]; center = [0, -0.4]; radius = 2.2;
+      t = 1; target = v3(0.2, 0.88, -0.2); az = (state.az * Math.PI) / 180; el = (11 * Math.PI) / 180;
+      dist = 7.6 * (aspect < 0.9 ? 1.1 / aspect : 1); fov = 25;
+      lights = 0.25; cool = 1; shadow = 0.55; outline = 1; grid = 1; gstep = 0.25;
+      fp = [-0.9, -0.95, 1.95, 0.4]; center = [0.4, -0.2]; radius = 2.4;
     } else {
       t = state.t;
       const cam = cameraAt(t);
       const radiusH = 0.5 * Math.hypot(L, S);
       target = v3(L / 2, (H + R) * 0.36, 0);
       az = ((cam.az + state.px * 4) * Math.PI) / 180; el = ((cam.el + state.py * 2.5) * Math.PI) / 180;
-      const fit = aspect < 1.45 ? Math.min(1.8, 1.3 / aspect) : 1;
+      const fit = aspect < 1.45 ? Math.min(2.7, 1.3 / aspect) : 1;
       dist = cam.dist * fit * (radiusH / 22.36); fov = 28;
       lights = smooth(clamp01((t - 0.55) / 0.12));
       cool = smooth(clamp01((t - 0.86) / 0.13));
@@ -630,6 +740,7 @@ export function createScene(canvas, opts = {}) {
     gl.uniform1f(u.u_t, t);
     gl.uniform3fv(u.u_cam, eye); gl.uniform3fv(u.u_sun, sun); gl.uniform3fv(u.u_bg, bg);
     gl.uniform1f(u.u_lights, lights); gl.uniform1f(u.u_cool, cool); gl.uniform1f(u.u_hs, mode === 'units' ? 0 : S / 2 - 0.3);
+    gl.uniform1f(u.u_studio, mode === 'units' ? 1 : 0); gl.uniform1f(u.u_floor, mode === 'units' ? 0 : 0.25);
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     attrs.forEach((a) => {
       if (a.loc < 0) return;
@@ -638,6 +749,20 @@ export function createScene(canvas, opts = {}) {
     });
     gl.drawArrays(gl.TRIANGLES, 0, count);
     attrs.forEach((a) => { if (a.loc >= 0) gl.disableVertexAttribArray(a.loc); });
+
+    if (airCount && cool > 0.001) {
+      gl.useProgram(aprog);
+      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false);
+      gl.uniformMatrix4fv(au.vp, false, vp); gl.uniform1f(au.cool, cool); gl.uniform3fv(au.cam, eye);
+      gl.uniform1f(au.time, still ? 0.6 : (performance.now() - t0) / 1000);
+      gl.bindBuffer(gl.ARRAY_BUFFER, abuf);
+      gl.enableVertexAttribArray(aPos); gl.enableVertexAttribArray(aSwd);
+      gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 24, 0);
+      gl.vertexAttribPointer(aSwd, 3, gl.FLOAT, false, 24, 12);
+      gl.drawArrays(gl.TRIANGLES, 0, airCount);
+      gl.disableVertexAttribArray(aPos); gl.disableVertexAttribArray(aSwd);
+      gl.depthMask(true); gl.disable(gl.BLEND);
+    }
   }
 
   function project(p) {
@@ -651,8 +776,9 @@ export function createScene(canvas, opts = {}) {
 
   return {
     set(next) { state = { ...state, ...next }; render(); },
+    get cooling() { return mode === 'hangar' && state.t > 0.86; },
     render,
     project,
-    destroy() { gl.deleteBuffer(vbo); gl.deleteBuffer(gbuf); gl.deleteProgram(prog); gl.deleteProgram(gprog); },
+    destroy() { gl.deleteBuffer(vbo); gl.deleteBuffer(gbuf); gl.deleteBuffer(abuf); gl.deleteProgram(aprog); gl.deleteProgram(prog); gl.deleteProgram(gprog); },
   };
 }
