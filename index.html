@@ -56,8 +56,10 @@
 
 <main id="main">
   <section class="hero" id="top">
-    <canvas id="hangar" aria-hidden="true"></canvas>
-    <img class="hero-fallback" src="/assets/hero.jpg" alt="" width="1536" height="709" />
+    <picture>
+      <source media="(max-width: 700px)" srcset="/assets/tent-wedding.jpg" />
+      <img class="hero-photo" src="/assets/hero.jpg" alt="Breeze tower ACs cooling a wedding lounge and dining area under drapes" width="1536" height="709" fetchpriority="high" />
+    </picture>
     <div class="hero-shade"></div>
     <div class="wrap hero-copy">
       <h1>Cooling for tents, hangars and halls.</h1>
@@ -66,10 +68,7 @@
         <a class="btn btn-wa" href="https://wa.me/919319373572?text=Hello%20Breeze%2C%20I%20need%20AC%20for%20an%20event." target="_blank" rel="noopener">Get a quote on WhatsApp</a>
         <a class="btn btn-ghost" href="tel:+919319373572">Call 93193 73572</a>
       </div>
-      <ul class="legend" aria-label="What the illustration shows">
-        <li><i class="dot hot"></i>Outside: 44°C on a May afternoon in Ujjain</li>
-        <li><i class="dot cold"></i>Inside: cold air from Breeze tower units</li>
-      </ul>
+      <p class="hero-note">Photo: a Breeze installation, tower units along the dining and lounge area.</p>
     </div>
   </section>
 
@@ -91,6 +90,23 @@
       <figure class="fleet-3d">
         <canvas id="units" aria-label="3D view of a 4 ton and a 2 ton Breeze tower AC. Drag to turn."></canvas>
         <figcaption><span>4 ton</span><span>2 ton</span><em>Drag to turn</em></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="plan" id="plan" aria-labelledby="plan-h">
+    <div class="wrap plan-head">
+      <h2 id="plan-h">How the cold air reaches your guests.</h2>
+      <p>In a hangar we place units along both long sides with the outlets aimed across the guest area. Cold air is heavier than warm air, so it spreads low, where people sit, while the sun heats the roof outside.</p>
+    </div>
+    <div class="wrap">
+      <figure class="plan-stage">
+        <canvas id="hangar" aria-label="3D cutaway of an aluminium hangar with Breeze tower ACs along both sides. Drag to look around."></canvas>
+        <figcaption>
+          <span><i class="dot cold"></i>Cold air from the units</span>
+          <span><i class="dot hot"></i>Heat on the roof, 44°C on a May afternoon in Ujjain</span>
+          <em>Drag to look around</em>
+        </figcaption>
       </figure>
     </div>
   </section>
@@ -117,6 +133,7 @@
         <figure class="m-b"><img src="/assets/auditorium.jpg" alt="Tower ACs along both sides of a full auditorium" width="1100" height="825" loading="lazy" /><figcaption>Auditorium, units on both side aisles</figcaption></figure>
         <figure class="m-c"><img src="/assets/hero.jpg" alt="Lounge and dining area under drapes with tower ACs" width="1536" height="709" loading="lazy" /><figcaption>Lounge and dining under drapes</figcaption></figure>
         <figure class="m-d"><img src="/assets/tent-towers.jpg" alt="Tower ACs at the entrance of a wedding tent" width="505" height="672" loading="lazy" /><figcaption>Entrance cooling</figcaption></figure>
+        <figure class="m-f"><img src="/assets/dining.jpg" alt="Banquet dining setup with rattan chairs under drapes" width="505" height="672" loading="lazy" /><figcaption>Dining setup</figcaption></figure>
         <figure class="m-e"><img src="/assets/transparent-hangar.jpg" alt="Transparent aluminium hangar set for a wedding reception" width="505" height="672" loading="lazy" /><figcaption>Transparent hangar reception</figcaption></figure>
       </div>
       <div class="clients">
